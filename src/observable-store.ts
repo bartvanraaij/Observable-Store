@@ -5,6 +5,7 @@ export interface ObservableStoreSettings {
     trackStateHistory?: boolean;
     logStateChanges?: boolean;
     includeStateChangesOnSubscribe?: boolean;
+    includeActionOnSubscribe?: boolean;
     stateSliceSelector?: (state: any) => any;
 }
 
@@ -21,6 +22,7 @@ const settingsDefaults: ObservableStoreSettings = {
     trackStateHistory: false, 
     logStateChanges: false,
     includeStateChangesOnSubscribe: false,
+    includeActionOnSubscribe: false,
     stateSliceSelector: null
 };
 const globalStateDispatcher = new BehaviorSubject<any>(null);
@@ -68,7 +70,7 @@ export class ObservableStore<T> {
         }
         
         if (dispatchState) {
-            this._dispatchState(state as any);
+            this._dispatchState(state as any, action);
         }
 
         if (this._settings.trackStateHistory) {
@@ -109,18 +111,32 @@ export class ObservableStore<T> {
         return storeState;
     }
 
-    private _dispatchState(stateChanges: T) {
+    private _dispatchState(stateChanges: T, action: string) {
         const stateOrSlice = this._getStateOrSlice(storeState);
         const clonedStateOrSlice = this._clonerService.deepClone(stateOrSlice);
         const clonedGlobalState = this._clonerService.deepClone(storeState);
 
-        if (this._settings.includeStateChangesOnSubscribe) {
-            this._stateDispatcher.next({ state: clonedStateOrSlice, stateChanges });
-            globalStateDispatcher.next({ state: clonedGlobalState, stateChanges });
+        if(this._settings.includeActionOnSubscribe) {
+
+
+            if (this._settings.includeStateChangesOnSubscribe) {
+                this._stateDispatcher.next({ action, state: clonedStateOrSlice, stateChanges});
+                globalStateDispatcher.next({ action, state: clonedGlobalState, stateChanges });
+            }
+            else {
+                this._stateDispatcher.next({ action, state: clonedStateOrSlice});
+                globalStateDispatcher.next({ action, state: clonedGlobalState});
+            }
         }
         else {
-            this._stateDispatcher.next(clonedStateOrSlice);
-            globalStateDispatcher.next(clonedGlobalState);
+            if (this._settings.includeStateChangesOnSubscribe) {
+                this._stateDispatcher.next({ state: clonedStateOrSlice, stateChanges });
+                globalStateDispatcher.next({ state: clonedGlobalState, stateChanges });
+            }
+            else {
+                this._stateDispatcher.next(clonedStateOrSlice);
+                globalStateDispatcher.next(clonedGlobalState);
+            }
         }
     }
 }
